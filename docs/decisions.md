@@ -43,3 +43,34 @@ Migration: `supabase/migrations/20260913000001_create_prospect_signup.sql`
 - `source` modeled as free text, no enum — consistent with how `Application.referral_source` is
   described the same way in the spec.
 
+## Application — approved 2026-09-13
+
+Migration: `supabase/migrations/20260913000002_create_application.sql`
+
+- **Ordering conflict**: `reviewed_by` references `PlatformAgent`, which per spec Section 2's own
+  ordering doesn't exist yet at this point (it comes after `User`). Added as a plain nullable
+  `uuid` column now; the FK constraint gets added via `ALTER TABLE` once `platform_agent` exists.
+  **Approved — remember to add that ALTER when building PlatformAgent.**
+- **Reapply question (spec Section 6, explicitly open)**: left `email` non-unique on this table
+  so multiple Application rows per email are allowed — least-lossy default, doesn't foreclose
+  either "reopen same row" or "new row" resolution. **Still genuinely open — user approved the
+  schema as a placeholder, not as a final answer to the Section 6 question.**
+- **`reference_contact` flattened** into `reference_name`/`reference_relationship`/
+  `reference_contact_method`/`reference_contact_value`/`reference_whatsapp_available`/
+  `reference_may_contact` columns rather than JSONB — fixed single-object shape, kept queryable.
+  **Approved.**
+- **`work_samples`** modeled as `jsonb` array of `{type: "file"|"link", ...}` objects (mixed-type
+  list). CHECK constraint requires `work_samples_explanation` when the array is empty.
+  **Approved.**
+- **`intended_category`** enum reconciles slightly different wording between spec Section 1 and
+  Section 7 into single slugs (e.g. `cosmetic_chemistry_formulation_science`). CHECK constraint
+  requires `intended_category_other` when category is `other`. **Approved.**
+- **`decision_reason` required on approve/reject** — enforced via CHECK constraint, beyond a
+  literal reading of spec Flow A but consistent with the "reason required on sensitive
+  transitions" pattern used for Payment/Payout/Report. **Approved.**
+- **Status-transition enforcement** via a `BEFORE UPDATE` trigger rejecting any transition not
+  in the spec's allowed list. Unrelated to the StatusChangeEvent "no trigger" rule, which only
+  governs that table's audit-log write path. **Approved.**
+- **RLS**: anon/authenticated `INSERT` only, no read/update policies yet. PlatformAgent review
+  access to be added once `User`/`PlatformAgent` exist. **Approved.**
+
