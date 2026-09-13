@@ -1,0 +1,26 @@
+project_id = "nzonzi"
+
+[api]
+enabled = true
+port = 54321
+# Deliberately excludes "internal" — that's where status_change_event lives.
+# PostgREST/GraphQL only ever route to schemas listed here, so a schema left off
+# this list is unreachable from any client-facing API regardless of RLS or key used.
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3000"
+additional_redirect_urls = []
+jwt_expiry = 3600
+enable_signup = false

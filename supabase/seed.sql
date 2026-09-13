@@ -1,0 +1,2 @@
+-- Local dev seed data. Empty until models exist.
+-- Add seed rows here as each model lands, scoped to that model only.
