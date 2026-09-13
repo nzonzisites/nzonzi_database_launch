@@ -114,3 +114,33 @@ Migration: `supabase/migrations/20260913000003_create_user.sql`
   and payments logic is explicitly out of scope for this build; this just reserves the space.
   **Approved.**
 
+## PlatformAgent — approved 2026-09-13
+
+Migration: `supabase/migrations/20260913000004_create_platform_agent.sql`
+
+- **Buyer/seller separation not hard-enforced**: spec says staff "generally shouldn't"
+  transact as buyer/seller on the same identity — soft language, not "never." No CHECK/trigger
+  blocks a PlatformAgent's `app_user` from also holding a `buyer_profile`/`seller_profile`; it's
+  a convention, not a DB constraint. **Approved as-is.**
+- **`verification_status` writes go through a `SECURITY DEFINER` function
+  (`set_seller_verification_status`), not a table grant** — a table-level
+  `GRANT UPDATE (verification_status) TO authenticated` would leak into the seller's own
+  "update own profile" policy from the User migration, since Postgres column grants apply to
+  the role, not to a specific policy. The function checks `review_sellers` permission
+  internally and updates with its own elevated privilege instead. This is also the pattern
+  that will be extended for the StatusChangeEvent write path once that table exists (the
+  `TODO` comment in the function marks exactly where). **Approved.**
+- **Reusable helpers `is_platform_agent_with(permission)` and `current_platform_agent_id()`**
+  added now — not spec-mandated, but Report/Listing review policies will need the same "is
+  caller a PlatformAgent with permission X" check later, so introducing it once here avoids
+  drift across policies. **Approved.**
+- **Backfilled `Application.reviewed_by` FK** to `platform_agent(id)`, deferred from that
+  migration due to Section 2's model ordering. **Done.**
+- **Backfilled `Application` SELECT/UPDATE policies** for PlatformAgents with `review_sellers`
+  — none existed before this migration, so Application rows were previously unreadable via the
+  client-facing API even to staff. `WITH CHECK` stamps `reviewed_by` as the acting agent's own
+  id on every update, so review actions are always attributable per spec Flow A/E. **Approved.**
+- **`platform_agent` itself**: self-read-only RLS, no insert/update/delete for
+  anon/authenticated — granting/revoking staff permissions is a service-role/admin action,
+  same self-elevation concern as `verification_status`. **Approved.**
+
