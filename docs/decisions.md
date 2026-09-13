@@ -283,3 +283,21 @@ Migration: `supabase/migrations/20260913000009_create_review.sql`
   `AFTER INSERT` trigger recomputes it from buyer-authored reviews only, running with elevated
   privilege to bypass the seller's own column-grant restriction on that column. **Approved.**
 
+**OPEN as of 2026-09-13 — revisit before treating Review as finished**: user asked (after the
+above was already committed) whether reviews should be publicly readable at all, or restricted
+to platform admin only. Clarifying question (does the review's *author* still see their own
+review, or is it admin-only with no exceptions at all) was raised and dismissed without an
+answer, then user said to skip this for now. **The public-read policy exactly as committed
+above is still live and unchanged.** Do not assume it's settled — ask again before building
+anything that depends on review visibility (e.g. a listing page showing star ratings).
+
+## WaitlistEntry — skipped 2026-09-13
+
+A draft migration was written (context/reaction enums, existing-user-only, paired
+price/currency nullability, owner-only RLS since no PlatformAgent permission fit "view
+demand/pricing analytics") but the user asked to skip it for now — this came up while the
+Review visibility question above was still unresolved, not because of an issue with the
+WaitlistEntry draft itself. Deleted, not committed — nothing exists in
+`supabase/migrations/` for WaitlistEntry. **Revisit later; Section 2 order resumes at Report
+in the meantime.**
+
