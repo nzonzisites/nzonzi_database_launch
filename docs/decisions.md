@@ -20,4 +20,26 @@ Ordered by when they came up, grouped by model. Spec references are to `marketpl
   false` to disable Supabase's built-in email/password path, consistent with "no in-house
   password storage" — but the actual external provider(s) to enable are still unspecified.
   **Open — needs your input before Auth config is finalized.**
+- **Git identity**: the initial commit landed with an auto-detected local identity, not the
+  user's real name/email. Not fixed automatically (git config changes are out of scope for the
+  assistant to make unprompted) — flagged for the user to set `user.name`/`user.email` in this
+  repo if desired.
+
+## ProspectSignup — approved 2026-09-13
+
+Migration: `supabase/migrations/20260913000001_create_prospect_signup.sql`
+
+- **Email uniqueness / resubscribe**: spec doesn't state whether the same email can sign up
+  twice. Assumed one row per email (case-insensitive unique index on `email`); a resubscribe is
+  an upsert that clears `unsubscribed_at`, not a new row. **Approved.**
+- **RLS**: spec gives no access rules for this table (unlike StatusChangeEvent). Defaulted to:
+  anon/authenticated can `INSERT` only (the landing page form); no public `SELECT`/`UPDATE`/
+  `DELETE` — reads are internal-tooling only until a PlatformAgent-facing view exists.
+  **Approved.**
+- **Unsubscribe-link mechanism**: the privacy notice promises an email unsubscribe link, which
+  implies a token-based or server-side path to flip `unsubscribed_at` without login. Not
+  modeled yet (no `unsubscribe_token` column — not in spec) since it's an API-layer concern for
+  whenever the email-sending flow is built, not a schema one now. **Flagged, deferred.**
+- `source` modeled as free text, no enum — consistent with how `Application.referral_source` is
+  described the same way in the spec.
 
