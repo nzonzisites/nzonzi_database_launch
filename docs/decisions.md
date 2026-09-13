@@ -247,3 +247,11 @@ Migration: `supabase/migrations/20260913000007_create_payment.sql`
   `Application.work_samples` — structure isn't spec'd, placeholder for consistency.
   **Approved.**
 
+## Payout — skipped 2026-09-13
+
+A draft migration was written (fully automated, service-role-only creation/transitions; a
+`BEFORE INSERT` trigger enforcing the 15% commission rate and the "only once Payment is
+released" invariant) but the user asked to skip this model for now, before approving. The
+draft was deleted, not committed — nothing exists in `supabase/migrations/` for Payout.
+**Revisit later; Section 2 order resumes at Message in the meantime.**
+
