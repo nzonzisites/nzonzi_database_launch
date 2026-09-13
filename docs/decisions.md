@@ -182,3 +182,38 @@ Migration: `supabase/migrations/20260913000005_create_listing.sql`
 - **`currency` defaults to `'USD'`** (spec Section 5: canonical price "likely USD") without a
   hard CHECK restricting it, since "likely" is spec's own hedge. **Approved.**
 
+## Order — approved 2026-09-13
+
+Migration: `supabase/migrations/20260913000006_create_order.sql`
+
+- **Spec's own explicitly-ambiguous field, resolved**: `listing_id or seller_id (FK, nullable
+  depending on model)` → single nullable `listing_id` FK, no separate `seller_id` column.
+  Seller is derived via `listing.seller_id` when needed. Reasoning: every MVP flow (Flow B)
+  ties a non-subscription order to a specific listing; `subscription` orders are access to the
+  whole database (Section 1), tied to neither listing nor seller. **User decision, 2026-09-13.**
+- **No allowed-transitions list exists for `Order.status`** in the spec (unlike Application/
+  Listing/Payment/Report). Not inventing a full `pending→fulfilled→disputed→cancelled` state
+  machine. **Concretely: no client-facing role can currently mark an order `fulfilled` or
+  `disputed`** — only the cancellation path is enforced. **User confirmed 2026-09-13: leave
+  flagged, move on — revisit when this becomes a real need.**
+- **No cancellation-reason column added** — spec says cancellation "requires a reason" but
+  lists no column for it on Order. Since Order is StatusChangeEvent-tracked (unlike
+  Application/Report, which carry `decision_reason` inline), the reason belongs in
+  `StatusChangeEvent.reason` once that table exists. Same deferred-backfill pattern as
+  `Application.reviewed_by`/`verification_status`. **Flagged, deferred.**
+- **`cancellation_initiator` has no `buyer` option** — only `seller | trust_safety_review`,
+  exactly as spec lists it. Possible spec oversight (can a buyer never cancel?). Implemented
+  literally, not adding a value spec doesn't list. **Flagged, not resolved.**
+- **`trust_safety_review` mapped to the `review_reports` PlatformAgent permission** — spec
+  doesn't name a specific permission for trust & safety escalation; closest fit given Flow C
+  ties report/dispute resolution to that permission. **Assistant's inference, flagged.**
+- **Table named `marketplace_order`, not `order`** — reserved SQL keyword. **Approved.**
+- **Actor-gated field changes enforced in a trigger**: `outcome` is buyer-only,
+  `seller_outcome` is seller-only, cancellation requires the actor to match
+  `cancellation_initiator` (seller self-cancel, or `review_reports` agent via trust & safety
+  escalation). Any other status change is rejected pending the transitions-list gap above.
+  **Approved.**
+- **INSERT requires `listing.status = 'active'`** when `listing_id` is set — not explicit in
+  spec, sensible integrity check (can't unlock/transact against a draft/paused listing).
+  **Approved.**
+
