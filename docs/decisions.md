@@ -255,3 +255,11 @@ released" invariant) but the user asked to skip this model for now, before appro
 draft was deleted, not committed — nothing exists in `supabase/migrations/` for Payout.
 **Revisit later; Section 2 order resumes at Message in the meantime.**
 
+## Message — skipped 2026-09-13
+
+A draft migration was written (order_id/sender_id/recipient_id/body/sent_at, permissive by
+design since MVP's one-way email relay means Message is mostly a relay-log row rather than
+real in-platform threading) but the user asked to skip this model for now before approving.
+The draft was deleted, not committed — nothing exists in `supabase/migrations/` for Message.
+**Revisit later; Section 2 order resumes at Review in the meantime.**
+
