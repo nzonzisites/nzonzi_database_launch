@@ -263,3 +263,23 @@ real in-platform threading) but the user asked to skip this model for now before
 The draft was deleted, not committed — nothing exists in `supabase/migrations/` for Message.
 **Revisit later; Section 2 order resumes at Review in the meantime.**
 
+## Review — approved 2026-09-13 ("approved i guess")
+
+Migration: `supabase/migrations/20260913000009_create_review.sql`
+
+- **Section 4 vs Section 2/3 tension**: Section 4's Feature List puts "Ratings and reviews"
+  under Should-have (post-MVP), but Section 2's data model and Flow B step 5 both describe it
+  as active now. Real inconsistency in the spec itself, not introduced here. Proceeded per
+  user's Section 2 build order rather than Section 4's MVP gating. **Flagged, not resolved —
+  revisit if it affects what actually ships at MVP.**
+- **Gated on the author's own outcome being recorded** (buyer needs `Order.outcome` set,
+  seller needs `Order.seller_outcome` set) via trigger, per Flow B step 5. **Approved.**
+- **`UNIQUE(order_id, author_id)`** and **reviews are immutable** (no update/delete policy) —
+  neither explicit in spec, standard review-integrity assumptions. **Approved.**
+- **`comment` is nullable** — spec doesn't say if required alongside a rating. **Approved.**
+- **Reviews are publicly readable** (`anon` `SELECT`) — inferred from "Should-have" implying
+  eventual buyer-facing social proof, same posture as `seller_profile`. **Approved.**
+- **Resolves the `rating_average` aggregation deferred from the User migration**: an
+  `AFTER INSERT` trigger recomputes it from buyer-authored reviews only, running with elevated
+  privilege to bypass the seller's own column-grant restriction on that column. **Approved.**
+
