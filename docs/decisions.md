@@ -217,3 +217,33 @@ Migration: `supabase/migrations/20260913000006_create_order.sql`
   spec, sensible integrity check (can't unlock/transact against a draft/paused listing).
   **Approved.**
 
+## Payment — approved 2026-09-13
+
+Migration: `supabase/migrations/20260913000007_create_payment.sql`
+
+- **Scope boundary confirmed**: "don't implement payments logic now, just leave the data model
+  room for it" is read as: build the schema faithfully, including spec's explicit
+  status-transition rules (that's data-model behavior, same rigor as Application/Listing), but
+  write zero actual payment-processing code (no Stripe calls, no webhooks). **Approved.**
+- **`order_id` is `UNIQUE`** — at most one Payment per Order. Not explicit in spec, assumed
+  since nothing suggests multiple payment attempts per order. **Approved.**
+- **`pending→paid` and `paid→held_in_escrow` are service-role only** (`auth.role() =
+  'service_role'` check in the trigger) — these represent Stripe webhook confirmations, not
+  client actions; no actual payment processing exists yet so no client role can trigger them.
+  **Approved.**
+- **Two distinct permissions for two distinct refund paths**: `evidence_submitted →
+  {released, refunded}` uses `manage_evidence_review` (spec's own bullet, both directions);
+  the separate "any status → refunded via trust & safety escalation" bullet uses
+  `issue_refunds`, which is literally named in spec's permissions enum — more confident mapping
+  than the `review_reports` guess made for Order's trust-safety cancellation. **Approved.**
+- **"Any status → refunded" implemented literally**, including semantically odd cases like
+  `pending→refunded` (nothing charged yet) or `released→refunded` (already paid out, would
+  need a real clawback in Phase 3). Spec says "any status"; not narrowing it. Real-world
+  clawback mechanics are Phase 3 business logic, out of scope now. **Approved.**
+- **No restriction tying Payment to `order.type = 'full_transaction'`** — Section 1's
+  subscription-to-the-database monetization plan could plausibly need Payment records too
+  once charged; restricting now would risk blocking that legitimate future case. **Approved.**
+- **`delivery_evidence`** modeled as the same `jsonb` array-of-items shape as
+  `Application.work_samples` — structure isn't spec'd, placeholder for consistency.
+  **Approved.**
+
