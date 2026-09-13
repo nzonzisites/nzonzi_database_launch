@@ -144,3 +144,41 @@ Migration: `supabase/migrations/20260913000004_create_platform_agent.sql`
   anon/authenticated — granting/revoking staff permissions is a service-role/admin action,
   same self-elevation concern as `verification_status`. **Approved.**
 
+## Listing — approved 2026-09-13
+
+Migration: `supabase/migrations/20260913000005_create_listing.sql`
+
+- **Spec inconsistency, resolved in favor of the StatusChangeEvent note**: Section 2's field
+  list for `Listing` omits `reviewed_by`/`decision_reason`, but the StatusChangeEvent note in
+  that same section claims Listing "already carries" those fields — true only for Application
+  and Report as literally listed. Treated as an omission; added both columns to Listing.
+  **Approved.**
+- **New `review_listings` permission** added to `platform_agent_permission` (via
+  `ALTER TYPE ... ADD VALUE`) rather than overloading `review_sellers` for listing review —
+  spec's own field list says "permissions: e.g. review_sellers | ...", and that "e.g." signals
+  the list isn't exhaustive. **Approved.**
+- **`category` reuses `Application`'s enum**, including the `other`/`category_other` pattern —
+  handles the edge case where the seller's Application itself was `other`. Assistant's own
+  inference, not explicit spec language. **Approved.**
+- **`sold_out` has no way back to `active`** in the literal spec transition list — reads like a
+  likely spec oversight. Implemented literally rather than unilaterally adding a fix.
+  **Flagged, left as-is per user request below.**
+- **No transition back to `draft` exists at all** once a listing leaves that state — same kind
+  of gap as `sold_out`, confirmed with the user (2026-09-13): the "seller submits → agent
+  reviews/edits/approves" loop the user described is the *existing* `pending_re_review` flow,
+  not a request for a new draft transition. **Confirmed no schema change needed** — agents'
+  listing UPDATE policy already has no column restriction (unlike the seller's column-limited
+  grant on `seller_profile`), so an agent can already edit listing content fields (title,
+  description, price, etc.) while reviewing/approving. **No new transition added; `sold_out`
+  and no-return-to-draft both remain open flags if this becomes a real need later.**
+- **Role-gated transitions enforced in the status-transition trigger, not just RLS**: `draft→
+  active` and `pending_re_review→{active,paused}` require a `review_listings` PlatformAgent
+  (and stamp `reviewed_by` as the acting agent, checked in-trigger); `active↔paused`, `active→
+  pending_re_review`, `active→sold_out` require the listing's own seller. RLS alone can't
+  express "same UPDATE, different allowed target depending on caller." **Approved.**
+- **On `active→pending_re_review`**, the trigger force-clears `reviewed_by`/`decision_reason`
+  — a prior approval shouldn't stay attached to edited content. Not explicitly spec'd.
+  **Approved.**
+- **`currency` defaults to `'USD'`** (spec Section 5: canonical price "likely USD") without a
+  hard CHECK restricting it, since "likely" is spec's own hedge. **Approved.**
+
