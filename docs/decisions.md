@@ -74,3 +74,43 @@ Migration: `supabase/migrations/20260913000002_create_application.sql`
 - **RLS**: anon/authenticated `INSERT` only, no read/update policies yet. PlatformAgent review
   access to be added once `User`/`PlatformAgent` exist. **Approved.**
 
+## User — approved 2026-09-13 ("approved i guess" — revisit if it starts to feel wrong)
+
+Migration: `supabase/migrations/20260913000003_create_user.sql`
+
+- **Four tables instead of one**: `app_user` (core identity) + `buyer_profile` +
+  `seller_profile` (public-readable) + `seller_payout_detail` (private). Role membership
+  (buyer/seller) is derived from row *presence* in the respective profile table, not a
+  separate `role` column — spec's own field list under `User` doesn't list one.
+  **User explicitly chose the separate-table split over one wide table, see the payout
+  isolation question asked before this migration was written.**
+- **Table named `app_user`, not `user`** — `user` is a reserved word in Postgres. Pure naming
+  deviation. **Approved.**
+- **`id` vs `auth_provider_id` kept separate** rather than making `app_user.id` equal to the
+  Supabase Auth uid directly — matches spec listing both as distinct fields, gives an internal
+  id stable independent of the auth backend. **Approved.**
+- **No cascading delete from `auth.users` to `app_user`** — once Listing/Order/Message
+  reference `app_user.id` later, a cascade triggered by an auth-identity deletion could wipe
+  marketplace history. Deleting the auth identity while `app_user` still references it fails
+  until the app explicitly offboards first. `buyer_profile`/`seller_profile` → `app_user` do
+  cascade (true sub-profiles of the core row). **Approved.**
+- **`seller_profile.verification_status` and `rating_average` locked against seller
+  self-edit** via column-level `REVOKE`/`GRANT` (RLS is row-level, can't do this alone) — a
+  seller can update `bio`/`headshot`/`location`/`external_testimonials` on their own row but
+  not those two columns. **Approved.**
+- **Two pieces deferred to later migrations** (same ordering issue as `Application.reviewed_by`):
+  a policy letting PlatformAgents set `verification_status`, and the StatusChangeEvent write-path
+  enforcement for that column — neither `PlatformAgent` nor `StatusChangeEvent` exist yet.
+  **Flagged, deferred — do not forget when building those tables.**
+- **`seller_profile` insert gated on an approved `Application`** matching email (Flow A step
+  3-4) — enforceable now since `Application` already exists. **Approved.**
+- **Two spec gaps, not filled in**: `buyer_type = 'other'` has no companion free-text field
+  (unlike `Application.intended_category_other`) — not added, would be guessing.
+  `external_testimonials`/`media_mentions` structure isn't specified — modeled as a flexible
+  `jsonb` array. **Approved as placeholders.**
+- **`rating_average` is a plain nullable column** — aggregation-from-reviews mechanism can't be
+  built until the `Review` model exists later in Section 2. **Approved, deferred.**
+- **`payout_details` is a loose `jsonb` blob** — Phase 3/Stripe Connect specifics aren't spec'd
+  and payments logic is explicitly out of scope for this build; this just reserves the space.
+  **Approved.**
+
